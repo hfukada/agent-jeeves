@@ -13,11 +13,23 @@ dependencies = [
     "httpx>=0.28",
     "chromadb>=0.6",
     "mcp[cli]>=1.0",
-    "tree-sitter>=0.24",
-    "tree-sitter-languages>=1.10",
     "bcrypt>=4.2",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.25",
+    "httpx>=0.28",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
 [build-system]
 requires = ["setuptools>=75"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
