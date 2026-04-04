@@ -57,6 +57,23 @@ class RepoUpdate(BaseModel):
     docker_build: str | None = None
 
 
+class GithubRepoPreview(BaseModel):
+    full_name: str
+    description: str | None
+    private: bool
+    default_branch: str
+
+
+class GithubReposRequest(BaseModel):
+    org: str
+    token: str
+
+
+class TriggerIndexRequest(BaseModel):
+    repo_names: list[str] | None = None
+    token: str | None = None
+
+
 class QueryCreate(BaseModel):
     question: str
     org_id: uuid.UUID | None = None

@@ -11,6 +11,8 @@ class RepoInfo:
     full_name: str
     clone_url: str
     default_branch: str
+    description: str | None
+    private: bool
 
 
 async def list_repos(org: str, token: str) -> list[RepoInfo]:
@@ -46,6 +48,8 @@ async def list_repos(org: str, token: str) -> list[RepoInfo]:
                         full_name=r["full_name"],
                         clone_url=r["clone_url"],
                         default_branch=r.get("default_branch", "main"),
+                        description=r.get("description"),
+                        private=r["private"],
                     )
                 )
 

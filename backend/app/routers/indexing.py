@@ -2,13 +2,23 @@ import asyncio
 import uuid
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db import get_session
 from app.models import IndexingJob, Organization, Repository
-from app.schemas import IndexJobResponse, OrgCreate, OrgResponse, RepoResponse
+from app.schemas import (
+    GithubRepoPreview,
+    GithubReposRequest,
+    IndexJobResponse,
+    OrgCreate,
+    OrgResponse,
+    RepoResponse,
+    TriggerIndexRequest,
+)
+from app.services import github_client
 from app.services.background import run_indexing_job
 
 router = APIRouter(prefix="/api")
@@ -32,8 +42,26 @@ async def create_org(body: OrgCreate, session: AsyncSession = Depends(get_sessio
     return org
 
 
+@router.post("/github/repos", response_model=list[GithubRepoPreview])
+async def list_github_repos(body: GithubReposRequest):
+    repos = await github_client.list_repos(body.org, body.token)
+    return [
+        GithubRepoPreview(
+            full_name=r.full_name,
+            description=r.description,
+            private=r.private,
+            default_branch=r.default_branch,
+        )
+        for r in repos
+    ]
+
+
 @router.post("/orgs/{org_id}/index")
-async def trigger_index(org_id: uuid.UUID, session: AsyncSession = Depends(get_session)):
+async def trigger_index(
+    org_id: uuid.UUID,
+    body: TriggerIndexRequest = Body(default=TriggerIndexRequest()),
+    session: AsyncSession = Depends(get_session),
+):
     org = await session.get(Organization, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -53,13 +81,13 @@ async def trigger_index(org_id: uuid.UUID, session: AsyncSession = Depends(get_s
     await session.commit()
     await session.refresh(job)
 
-    # The token needs to be provided again since we only store the hash.
-    # For now, use the env var GITHUB_TOKEN.
-    from app.config import settings
-    if not settings.github_token:
+    resolved_token = body.token if body.token else settings.github_token
+    if not resolved_token:
         raise HTTPException(status_code=400, detail="GITHUB_TOKEN not configured")
 
-    asyncio.create_task(run_indexing_job(str(job.id), str(org_id), settings.github_token))
+    asyncio.create_task(
+        run_indexing_job(str(job.id), str(org_id), resolved_token, repo_names=body.repo_names)
+    )
 
     return {"job_id": job.id}
 
