@@ -18,7 +18,7 @@ services:
   chromadb:
     image: chromadb/chroma:0.6.3
     ports:
-      - "8100:8000"
+      - "8182:8282"
     volumes:
       - chromadata:/chroma/chroma
 
@@ -28,22 +28,15 @@ services:
       - "11434:11434"
     volumes:
       - ollama_models:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
   backend:
     build: ./backend
     ports:
-      - "8080:8080"
+      - "8686:8686"
     environment:
       DATABASE_URL: postgresql+asyncpg://jeeves:${POSTGRES_PASSWORD:-jeeves}@postgres:5432/jeeves
       CHROMA_HOST: chromadb
-      CHROMA_PORT: "8000"
+      CHROMA_PORT: "8282"
       OLLAMA_BASE_URL: http://ollama:11434
       GITHUB_TOKEN: ${GITHUB_TOKEN}
     depends_on:
@@ -59,7 +52,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      PUBLIC_API_URL: http://localhost:8080
+      PUBLIC_API_URL: http://localhost:8686
     depends_on:
       - backend
 

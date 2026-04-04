@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -11,12 +12,22 @@ from app.models import Base
 from app.routers import indexing, query, update
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Retry DB connection (DNS may not be ready immediately in Docker)
+    for attempt in range(10):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            break
+        except Exception as e:
+            if attempt == 9:
+                raise
+            logger.warning(f"DB connection attempt {attempt + 1}/10 failed: {e}")
+            await asyncio.sleep(2)
 
     # Pull nomic-embed-text model on startup
     async with httpx.AsyncClient(timeout=600) as client:
