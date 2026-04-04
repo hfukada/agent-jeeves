@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
+	import SetupFlow from '$lib/components/SetupFlow.svelte';
 	import { submitQuery, pollQuery, type QueryResponse } from '$lib/api';
 
 	interface Message {
@@ -8,6 +9,7 @@
 		response: QueryResponse | null;
 	}
 
+	let orgId = $state<string | null>(null);
 	let messages = $state<Message[]>([]);
 	let loading = $state(false);
 
@@ -41,22 +43,26 @@
 	}
 </script>
 
-<div class="chat-container">
-	<div class="messages">
-		{#if messages.length === 0}
-			<div class="empty">
-				<p>Search across your organization's repositories.</p>
-				<p class="hint">Try: "Which repos use FastAPI?" or "Where is authentication handled?"</p>
-			</div>
-		{/if}
+{#if orgId === null}
+	<SetupFlow oncomplete={(id) => { orgId = id; }} />
+{:else}
+	<div class="chat-container">
+		<div class="messages">
+			{#if messages.length === 0}
+				<div class="empty">
+					<p>Search across your organization's repositories.</p>
+					<p class="hint">Try: "Which repos use FastAPI?" or "Where is authentication handled?"</p>
+				</div>
+			{/if}
 
-		{#each messages as message}
-			<ChatMessage {message} />
-		{/each}
+			{#each messages as message}
+				<ChatMessage {message} />
+			{/each}
+		</div>
+
+		<ChatInput onSubmit={handleSubmit} disabled={loading} />
 	</div>
-
-	<ChatInput onSubmit={handleSubmit} disabled={loading} />
-</div>
+{/if}
 
 <style>
 	.chat-container {

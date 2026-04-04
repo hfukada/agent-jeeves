@@ -20,7 +20,12 @@ logger = logging.getLogger(__name__)
 CONCURRENCY = 4
 
 
-async def run_indexing_job(job_id: str, org_id: str, token: str) -> None:
+async def run_indexing_job(
+    job_id: str,
+    org_id: str,
+    token: str,
+    repo_names: list[str] | None = None,
+) -> None:
     """Run the full indexing pipeline for an organization."""
     async with async_session() as session:
         await session.execute(
@@ -40,6 +45,8 @@ async def run_indexing_job(job_id: str, org_id: str, token: str) -> None:
 
         # List repos
         repos = await github_client.list_repos(org_name, token)
+        if repo_names is not None:
+            repos = [r for r in repos if r.full_name in repo_names]
         total = len(repos)
         logger.info(f"Found {total} repos for {org_name}")
 
