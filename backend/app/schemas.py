@@ -6,7 +6,6 @@ from pydantic import BaseModel
 
 class OrgCreate(BaseModel):
     name: str
-    github_token: str
 
 
 class OrgResponse(BaseModel):
@@ -64,14 +63,8 @@ class GithubRepoPreview(BaseModel):
     default_branch: str
 
 
-class GithubReposRequest(BaseModel):
-    org: str
-    token: str
-
-
 class TriggerIndexRequest(BaseModel):
     repo_names: list[str] | None = None
-    token: str | None = None
 
 
 class QueryCreate(BaseModel):

@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8080';
+const API_URL = 'http://localhost:8686';
 
 export interface GithubRepoPreview {
 	full_name: string;
@@ -55,21 +55,17 @@ export async function pollQuery(queryId: string, intervalMs = 1000): Promise<Que
 	}
 }
 
-export async function listGithubRepos(org: string, token: string): Promise<GithubRepoPreview[]> {
-	const res = await fetch(`${API_URL}/api/github/repos`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ org, token }),
-	});
+export async function listGithubRepos(org: string): Promise<GithubRepoPreview[]> {
+	const res = await fetch(`${API_URL}/api/github/repos/${encodeURIComponent(org)}`);
 	if (!res.ok) throw new Error(await res.text());
 	return res.json();
 }
 
-export async function createOrg(name: string, token: string): Promise<OrgResponse> {
+export async function createOrg(name: string): Promise<OrgResponse> {
 	const res = await fetch(`${API_URL}/api/orgs`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ name, github_token: token }),
+		body: JSON.stringify({ name }),
 	});
 	if (!res.ok) throw new Error(await res.text());
 	return res.json();
@@ -77,13 +73,12 @@ export async function createOrg(name: string, token: string): Promise<OrgRespons
 
 export async function triggerIndex(
 	orgId: string,
-	repoNames: string[],
-	token: string
+	repoNames: string[]
 ): Promise<{ job_id: string }> {
 	const res = await fetch(`${API_URL}/api/orgs/${orgId}/index`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ repo_names: repoNames, token }),
+		body: JSON.stringify({ repo_names: repoNames }),
 	});
 	if (!res.ok) throw new Error(await res.text());
 	return res.json();

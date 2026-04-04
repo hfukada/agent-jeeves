@@ -6,7 +6,6 @@
 
 	let step = $state<1 | 2 | 3>(1);
 	let org = $state('');
-	let token = $state('');
 	let repos = $state<GithubRepoPreview[]>([]);
 	let selected = $state(new Set<string>());
 	let orgId = $state('');
@@ -56,7 +55,7 @@
 		error = null;
 		loading = true;
 		try {
-			const result = await listGithubRepos(org, token);
+			const result = await listGithubRepos(org);
 			repos = result;
 			selected = new Set(result.map((r) => r.full_name));
 			step = 2;
@@ -89,9 +88,9 @@
 		error = null;
 		loading = true;
 		try {
-			const createdOrg = await createOrg(org, token);
+			const createdOrg = await createOrg(org);
 			orgId = createdOrg.id;
-			const job = await triggerIndex(orgId, [...selected], token);
+			const job = await triggerIndex(orgId, [...selected]);
 			jobId = job.job_id;
 			step = 3;
 		} catch (err) {
@@ -106,15 +105,11 @@
 	{#if step === 1}
 		<div class="step">
 			<h2>Connect GitHub</h2>
-			<p>Enter a GitHub organization or username and a personal access token to discover repositories.</p>
+			<p>Enter a GitHub organization or username to discover repositories.</p>
 			<form onsubmit={(e) => { e.preventDefault(); fetchRepos(); }}>
 				<label>
 					Organization / Username
 					<input type="text" bind:value={org} placeholder="my-org" required />
-				</label>
-				<label>
-					GitHub Token
-					<input type="password" bind:value={token} placeholder="ghp_..." required />
 				</label>
 				{#if error}
 					<p class="error">{error}</p>

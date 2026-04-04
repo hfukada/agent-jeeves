@@ -11,7 +11,6 @@ from app.db import get_session
 from app.models import IndexingJob, Organization, Repository
 from app.schemas import (
     GithubRepoPreview,
-    GithubReposRequest,
     IndexJobResponse,
     OrgCreate,
     OrgResponse,
@@ -24,9 +23,14 @@ from app.services.background import run_indexing_job
 router = APIRouter(prefix="/api")
 
 
+def _require_token() -> str:
+    if not settings.github_token:
+        raise HTTPException(status_code=400, detail="GITHUB_TOKEN not configured on server")
+    return settings.github_token
+
+
 @router.post("/orgs", response_model=OrgResponse)
 async def create_org(body: OrgCreate, session: AsyncSession = Depends(get_session)):
-    # Check for existing org
     result = await session.execute(
         select(Organization).where(Organization.name == body.name)
     )
@@ -34,7 +38,8 @@ async def create_org(body: OrgCreate, session: AsyncSession = Depends(get_sessio
     if existing:
         raise HTTPException(status_code=409, detail="Organization already exists")
 
-    token_hash = bcrypt.hashpw(body.github_token.encode(), bcrypt.gensalt()).decode()
+    token = _require_token()
+    token_hash = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
     org = Organization(name=body.name, github_token_hash=token_hash)
     session.add(org)
     await session.commit()
@@ -42,9 +47,10 @@ async def create_org(body: OrgCreate, session: AsyncSession = Depends(get_sessio
     return org
 
 
-@router.post("/github/repos", response_model=list[GithubRepoPreview])
-async def list_github_repos(body: GithubReposRequest):
-    repos = await github_client.list_repos(body.org, body.token)
+@router.get("/github/repos/{org}", response_model=list[GithubRepoPreview])
+async def list_github_repos(org: str):
+    token = _require_token()
+    repos = await github_client.list_repos(org, token)
     return [
         GithubRepoPreview(
             full_name=r.full_name,
@@ -66,7 +72,6 @@ async def trigger_index(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
-    # Check for already running job
     result = await session.execute(
         select(IndexingJob).where(
             IndexingJob.org_id == org_id,
@@ -81,12 +86,9 @@ async def trigger_index(
     await session.commit()
     await session.refresh(job)
 
-    resolved_token = body.token if body.token else settings.github_token
-    if not resolved_token:
-        raise HTTPException(status_code=400, detail="GITHUB_TOKEN not configured")
-
+    token = _require_token()
     asyncio.create_task(
-        run_indexing_job(str(job.id), str(org_id), resolved_token, repo_names=body.repo_names)
+        run_indexing_job(str(job.id), str(org_id), token, repo_names=body.repo_names)
     )
 
     return {"job_id": job.id}

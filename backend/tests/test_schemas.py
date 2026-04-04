@@ -8,9 +8,8 @@ from app.schemas import OrgCreate, QueryCreate, RepoUpdate, QueryResponse
 
 class TestOrgCreate:
     def test_valid(self):
-        org = OrgCreate(name="myorg", github_token="ghp_abc123")
+        org = OrgCreate(name="myorg")
         assert org.name == "myorg"
-        assert org.github_token == "ghp_abc123"
 
 
 class TestQueryCreate:
