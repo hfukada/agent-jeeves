@@ -44,9 +44,19 @@ async def run_indexing_job(
             org_name = org.name
 
         # List repos
-        repos = await github_client.list_repos(org_name, token)
         if repo_names is not None:
-            repos = [r for r in repos if r.full_name in repo_names]
+            repos = [
+                github_client.RepoInfo(
+                    full_name=fn,
+                    clone_url=f"https://github.com/{fn}.git",
+                    default_branch="main",
+                    description=None,
+                    private=False,
+                )
+                for fn in repo_names
+            ]
+        else:
+            repos = await github_client.list_repos(org_name, token)
         total = len(repos)
         logger.info(f"Found {total} repos for {org_name}")
 

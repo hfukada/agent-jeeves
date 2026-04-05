@@ -35,3 +35,55 @@ export async function pollQuery(queryId: string, intervalMs = 1000): Promise<Que
 		await new Promise((r) => setTimeout(r, intervalMs));
 	}
 }
+
+export interface GithubRepoPreview {
+	full_name: string;
+	description: string | null;
+	language: string | null;
+	private: boolean;
+	html_url: string | null;
+}
+
+export interface JobStatus {
+	id: string;
+	org_id: string;
+	status: 'pending' | 'running' | 'done' | 'error';
+	error?: string | null;
+	progress?: Record<string, unknown>;
+}
+
+export async function fetchAvailableRepos(): Promise<GithubRepoPreview[]> {
+	const res = await fetch(`${API_URL}/api/github/all-repos`);
+	if (!res.ok) {
+		const detail = await res.text();
+		throw new Error(`Failed to fetch repos (${res.status}): ${detail}`);
+	}
+	return res.json();
+}
+
+export async function registerRepos(fullNames: string[]): Promise<JobStatus> {
+	const res = await fetch(`${API_URL}/api/repos/register`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ full_names: fullNames }),
+	});
+	if (!res.ok) {
+		const detail = await res.text();
+		throw new Error(`Failed to register repos (${res.status}): ${detail}`);
+	}
+	return res.json();
+}
+
+export async function pollJob(
+	jobId: string,
+	onProgress?: (status: JobStatus) => void
+): Promise<JobStatus> {
+	while (true) {
+		const res = await fetch(`${API_URL}/api/jobs/${jobId}`);
+		if (!res.ok) throw new Error(`Job poll failed (${res.status})`);
+		const job: JobStatus = await res.json();
+		onProgress?.(job);
+		if (job.status === 'done' || job.status === 'error') return job;
+		await new Promise((r) => setTimeout(r, 2000));
+	}
+}

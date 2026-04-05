@@ -60,11 +60,17 @@ class GithubRepoPreview(BaseModel):
     full_name: str
     description: str | None
     private: bool
-    default_branch: str
+    default_branch: str | None = None
+    language: str | None = None
+    html_url: str | None = None
 
 
 class TriggerIndexRequest(BaseModel):
     repo_names: list[str] | None = None
+
+
+class RegisterReposRequest(BaseModel):
+    full_names: list[str]  # e.g. ["owner/repo1", "owner/repo2"]
 
 
 class QueryCreate(BaseModel):
