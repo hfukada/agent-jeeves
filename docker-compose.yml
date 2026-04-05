@@ -18,7 +18,7 @@ services:
   chromadb:
     image: chromadb/chroma:0.6.3
     ports:
-      - "8182:8282"
+      - "8182:8000"
     volumes:
       - chromadata:/chroma/chroma
 
