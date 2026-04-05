@@ -1,15 +1,15 @@
-FROM node:20-alpine AS builder
+FROM node:20.19-alpine3.22 AS builder
 
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY . .
 ARG PUBLIC_API_URL=http://localhost:8686
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:20.19-alpine3.22
 
 WORKDIR /app
 COPY --from=builder /app/build ./build

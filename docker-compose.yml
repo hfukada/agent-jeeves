@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.13-alpine3.22
     environment:
       POSTGRES_DB: jeeves
       POSTGRES_USER: jeeves
@@ -16,14 +16,12 @@ services:
       retries: 5
 
   chromadb:
-    image: chromadb/chroma:0.6.3
-    ports:
-      - "8182:8000"
+    image: chromadb/chroma:1.5.5
     volumes:
       - chromadata:/chroma/chroma
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.12.11
     ports:
       - "11435:11434"
     volumes:
@@ -36,7 +34,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://jeeves:${POSTGRES_PASSWORD:-jeeves}@postgres:5432/jeeves
       CHROMA_HOST: chromadb
-      CHROMA_PORT: "8282"
+      CHROMA_PORT: "8000"
       OLLAMA_BASE_URL: http://ollama:11434
       GITHUB_TOKEN: ${GITHUB_TOKEN}
     depends_on:
