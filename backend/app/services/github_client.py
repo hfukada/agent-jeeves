@@ -60,6 +60,41 @@ async def list_repos(org: str, token: str) -> list[RepoInfo]:
     return repos
 
 
+async def get_authenticated_user(token: str) -> str:
+    """Returns the login (username) of the authenticated token owner."""
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get("https://api.github.com/user", headers=headers)
+        resp.raise_for_status()
+        return resp.json()["login"]
+
+
+async def list_all_accessible_repos(token: str) -> list[dict]:
+    """
+    Fetches all repos the token can access via GET /user/repos with pagination.
+    affiliation covers owned, collaborator, and org-member repos.
+    Returns raw dicts with at minimum: full_name, description, language, private, html_url.
+    """
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+    repos = []
+    url = "https://api.github.com/user/repos"
+    params: dict = {"per_page": 100, "affiliation": "owner,collaborator,organization_member"}
+    async with httpx.AsyncClient(timeout=60) as client:
+        while url:
+            resp = await client.get(url, headers=headers, params=params)
+            resp.raise_for_status()
+            repos.extend(resp.json())
+            # GitHub pagination via Link header
+            link = resp.headers.get("Link", "")
+            next_url = None
+            for part in link.split(","):
+                if 'rel="next"' in part:
+                    next_url = part.split(";")[0].strip().strip("<>")
+            url = next_url
+            params = {}  # params are encoded in next_url
+    return repos
+
+
 async def clone_repo(clone_url: str, token: str, dest: Path | None = None) -> Path:
     """Shallow clone a repository. Returns the path to the cloned directory."""
     if dest is None:

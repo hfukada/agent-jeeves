@@ -45,8 +45,9 @@
 	<div class="messages">
 		{#if messages.length === 0}
 			<div class="empty">
-				<p>Search across your organization's repositories.</p>
+				<p>Search across your indexed repositories.</p>
 				<p class="hint">Try: "Which repos use FastAPI?" or "Where is authentication handled?"</p>
+				<p><a href="/setup">Set up repositories</a></p>
 			</div>
 		{/if}
 

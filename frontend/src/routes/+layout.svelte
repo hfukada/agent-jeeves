@@ -10,6 +10,7 @@
 	<header>
 		<h1>Agent Jeeves</h1>
 		<p>Code knowledge base for multi-repository organizations</p>
+		<nav><a href="/setup">Manage repos</a></nav>
 	</header>
 	<main>
 		{@render children()}

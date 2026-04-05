@@ -14,6 +14,7 @@ from app.schemas import (
     IndexJobResponse,
     OrgCreate,
     OrgResponse,
+    RegisterReposRequest,
     RepoResponse,
     TriggerIndexRequest,
 )
@@ -60,6 +61,64 @@ async def list_github_repos(org: str):
         )
         for r in repos
     ]
+
+
+@router.get("/github/all-repos", response_model=list[GithubRepoPreview])
+async def list_all_repos():
+    token = _require_token()
+    try:
+        raw = await github_client.list_all_accessible_repos(token)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    return [
+        GithubRepoPreview(
+            full_name=r["full_name"],
+            description=r.get("description"),
+            language=r.get("language"),
+            private=r["private"],
+            html_url=r["html_url"],
+            default_branch=r.get("default_branch"),
+        )
+        for r in raw
+    ]
+
+
+@router.post("/repos/register", response_model=IndexJobResponse)
+async def register_repos(
+    req: RegisterReposRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    token = _require_token()
+
+    # 1. Get owner login for default org name
+    try:
+        owner_login = await github_client.get_authenticated_user(token)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to get GitHub user: {e}")
+
+    # 2. Upsert default org
+    result = await session.execute(
+        select(Organization).where(Organization.name == owner_login)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        org = Organization(name=owner_login, github_token_hash="env")
+        session.add(org)
+        await session.flush()
+
+    # 3. Create IndexingJob row
+    job = IndexingJob(org_id=org.id)
+    session.add(job)
+    await session.commit()
+    await session.refresh(job)
+
+    # 4. Fire background task with explicit repo list
+    asyncio.create_task(
+        run_indexing_job(str(job.id), str(org.id), token, repo_names=req.full_names)
+    )
+
+    # 5. Return job response
+    return job
 
 
 @router.post("/orgs/{org_id}/index")
